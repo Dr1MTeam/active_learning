@@ -5,6 +5,8 @@ from matplotlib import pyplot as plt
 
 import torch
 
+import torch.nn.functional as F
+
 class Trainer:
     def __init__(self, model, optimizer, criterion, train_loader, val_loader,  device):
         """
@@ -57,6 +59,29 @@ class Trainer:
         self.train_losses.append(avg_loss)
         return avg_loss
 
+    def calculate_mnlp(self, outputs, targets):
+        """
+        Calculate Maximum Normalized Log-Probability (MNLP).
+        :param outputs: Model outputs (logits)
+        :param targets: True labels
+        :return: MNLP value
+        """
+        # Convert logits to probabilities using softmax
+        probabilities = F.softmax(outputs, dim=1)
+
+        # Get the log-probabilities
+        log_probabilities = torch.log(probabilities)
+
+        # Gather log-probabilities of the true classes
+        true_log_probs = log_probabilities[range(len(targets)), targets]
+
+        # Normalize by dividing by log(1/num_classes)
+        num_classes = probabilities.size(1)
+        normalized_log_probs = true_log_probs / torch.log(torch.tensor(1.0 / num_classes))
+
+        # Return the maximum normalized log-probability
+        return normalized_log_probs.mean().item()
+
     def val_step(self):
         """
         Один шаг валидации.
@@ -67,6 +92,7 @@ class Trainer:
         running_loss = 0.0
         all_targets = []
         all_predictions = []
+        mnlp_values = []
 
         with torch.no_grad():
             for inputs, targets in tqdm(self.val_loader, desc="Validating"):
@@ -83,6 +109,10 @@ class Trainer:
                 all_predictions.extend(predictions)
                 all_targets.extend(targets.cpu().numpy())
 
+                # Сохранение MNLP
+                mnlp = self.calculate_mnlp(outputs, targets)
+                mnlp_values.append(mnlp)
+
         # Рассчитываем метрики
         avg_loss = running_loss / len(self.val_loader)
         accuracy = accuracy_score(all_targets, all_predictions)
@@ -90,10 +120,12 @@ class Trainer:
         self.acc.append(accuracy)
         self.f1.append(f1)
 
+        avg_mnlp = sum(mnlp_values) / len(mnlp_values) if mnlp_values else 0
+
         self.val_losses.append(avg_loss)
 
-        print(f"Validation Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
-        return avg_loss, accuracy, f1
+        print(f"Validation Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}, MNLP: {avg_mnlp:.4f}")
+        return avg_loss, accuracy, f1, avg_mnlp
     
     def fit(self, num_epochs):
         """
@@ -102,8 +134,8 @@ class Trainer:
         """
         for epoch in range(num_epochs):
             train_loss = self.train_step()
-            val_loss, accuracy, f1 = self.val_step()
-            print(f"Epoch {epoch+1}/{num_epochs} - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Acc: {accuracy:.4f}, F1: {f1:.4f}")
+            val_loss, accuracy, f1, avg_mnlp = self.val_step()
+            print(f"Epoch {epoch+1}/{num_epochs} - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Acc: {accuracy:.4f}, F1: {f1:.4f}, MNLP: {avg_mnlp:.4f}")
 
         self.plot_losses()
 
