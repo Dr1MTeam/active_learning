@@ -2,7 +2,7 @@ from tqdm import tqdm
 from sklearn.metrics import f1_score, accuracy_score
 
 from matplotlib import pyplot as plt
-
+from torch.utils.data import ConcatDataset, Subset
 import torch
 
 class Trainer:
@@ -22,6 +22,7 @@ class Trainer:
         self.train_losses = []
         self.val_losses = []
         self.train_loader = train_loader
+        self.pool_loader = None
         self.val_loader = val_loader
         self.acc = []
         self.f1 = []
@@ -94,6 +95,28 @@ class Trainer:
 
         print(f"Validation Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
         return avg_loss, accuracy, f1
+    
+    def select_samples(self):
+        """
+        Выбираем сэмплы на активное обучение
+
+        """
+
+        pass
+
+    def update_dataloader(self, samples_index):
+        """
+        Обновляем даталоудеры
+        """
+        samples = [self.pool_loader.dataset[i] for i in samples_index]
+
+
+        self.train_loader.dataset = ConcatDataset([self.train_loader.dataset, ConcatDataset(samples)])
+        indices = list(set(range(len(self.pool_loader))) - set(samples_index))
+        self.pool_loader.dataset = Subset(self.pool_loader.dataset, indices)
+
+
+
     
     def fit(self, num_epochs):
         """
