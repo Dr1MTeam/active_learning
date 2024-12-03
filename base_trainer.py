@@ -23,6 +23,7 @@ class Trainer:
         self.device = device
         
         self.train_loader = train_loader
+        self.pool_loader = None
         self.val_loader = val_loader
 
         self.train_losses = []
