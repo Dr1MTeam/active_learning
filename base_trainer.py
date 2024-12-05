@@ -136,31 +136,24 @@ class Trainer:
         Обновляем даталоудеры
         """
 
-
-
         samples = [self.pool_loader.dataset[i] for i in samples_index]
 
 
- 
-
-
-        new_train_data = ConcatDataset([self.train_loader.dataset, ConcatDataset(samples)])
+        new_train_data = ConcatDataset([self.train_loader.dataset, samples])
         
-        
-        #####
-        # Проблема -
-        # Неравномерный батч, мб добавить паддинги???
-       
-       # padded_data = pad_sequence(new_data, batch_first=True)
-
         self.train_loader = DataLoader(new_train_data,
                                        batch_size=self.train_loader.batch_size,
                                        shuffle=True,
                                        num_workers=self.train_loader.num_workers)
         
-        pool_indices = list(set(range(len(self.pool_loader))) - set(samples_index))
+        pool_indices = list(set(range(len(self.pool_loader.dataset))) - set(samples_index))
+
+
+        print(len(self.pool_loader.dataset))
 
         new_pool_data = Subset(self.pool_loader.dataset, pool_indices)
+
+        print(len(new_pool_data))
 
 
         self.pool_loader = DataLoader(new_pool_data,
