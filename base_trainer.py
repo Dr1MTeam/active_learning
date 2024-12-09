@@ -2,11 +2,12 @@ from tqdm import tqdm
 from sklearn.metrics import f1_score, accuracy_score
 
 from matplotlib import pyplot as plt
-from torch.utils.data import ConcatDataset, Subset
+from torch.utils.data import ConcatDataset, Subset, DataLoader
 import torch
+from torch.nn.utils.rnn import pad_sequence
 
 class Trainer:
-    def __init__(self, model, optimizer, criterion, train_loader, val_loader,  device, scheduler = None):
+    def __init__(self, model, optimizer,pool_loader, criterion, train_loader, val_loader,  device, scheduler = None):
         """
         :param model: Обучаемая модель
         :param optimizer: Оптимизатор
@@ -23,7 +24,7 @@ class Trainer:
         self.device = device
         
         self.train_loader = train_loader
-        self.pool_loader = None
+        self.pool_loader = pool_loader
         self.val_loader = val_loader
 
         self.train_losses = []
@@ -134,12 +135,31 @@ class Trainer:
         """
         Обновляем даталоудеры
         """
+
         samples = [self.pool_loader.dataset[i] for i in samples_index]
 
 
-        self.train_loader.dataset = ConcatDataset([self.train_loader.dataset, ConcatDataset(samples)])
-        indices = list(set(range(len(self.pool_loader))) - set(samples_index))
-        self.pool_loader.dataset = Subset(self.pool_loader.dataset, indices)
+        new_train_data = ConcatDataset([self.train_loader.dataset, samples])
+        
+        self.train_loader = DataLoader(new_train_data,
+                                       batch_size=self.train_loader.batch_size,
+                                       shuffle=True,
+                                       num_workers=self.train_loader.num_workers)
+        
+        pool_indices = list(set(range(len(self.pool_loader.dataset))) - set(samples_index))
+
+
+        print(len(self.pool_loader.dataset))
+
+        new_pool_data = Subset(self.pool_loader.dataset, pool_indices)
+
+        print(len(new_pool_data))
+
+
+        self.pool_loader = DataLoader(new_pool_data,
+                                      batch_size=self.pool_loader.batch_size,
+                                      shuffle=True,
+                                      num_workers=self.pool_loader.num_workers)
 
 
 
