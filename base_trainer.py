@@ -2,31 +2,39 @@ from tqdm import tqdm
 from sklearn.metrics import f1_score, accuracy_score
 
 from matplotlib import pyplot as plt
-
+from torch.utils.data import ConcatDataset, Subset, DataLoader
 import torch
-
-import torch.nn.functional as F
+from torch.nn.utils.rnn import pad_sequence
 
 class Trainer:
-    def __init__(self, model, optimizer, criterion, train_loader, val_loader,  device):
+    def __init__(self, model, optimizer,pool_loader, criterion, train_loader, val_loader,  device, scheduler = None):
         """
         :param model: Обучаемая модель
         :param optimizer: Оптимизатор
+        :param scheduler: Оптимизатор
         :param criterion: Функция потерь
         :param device: Устройство ('cuda' или 'cpu')
-        :train_loader: Загрузчик обучающего датасета
-        :val_loader: Загрузчик тестового датасета
+        :param train_loader: Загрузчик обучающего датасета
+        :param val_loader: Загрузчик тестового датасета
         """
         self.model = model
         self.optimizer = optimizer
+        self.scheduler = scheduler
         self.criterion = criterion
         self.device = device
+        
+        self.train_loader = train_loader
+        self.pool_loader = pool_loader
+        self.val_loader = val_loader
+
         self.train_losses = []
         self.val_losses = []
-        self.train_loader = train_loader
-        self.val_loader = val_loader
-        self.acc = []
-        self.f1 = []
+
+        self.train_acc = []
+        self.val_acc = []
+
+        self.train_f1 = []
+        self.val_f1 = []
 
     def train_step(self):
         """
@@ -36,6 +44,9 @@ class Trainer:
         """
         self.model.train()
         running_loss = 0.0
+
+        all_targets = []
+        all_predictions = []
 
         for inputs, targets in tqdm(self.train_loader,desc="Training"):
             inputs, targets = inputs.to(self.device), targets.to(self.device)
@@ -55,32 +66,22 @@ class Trainer:
 
             running_loss += loss.item()
 
+            # Сохранение предсказаний и истинных меток
+            predictions = outputs.argmax(dim=1).cpu().numpy()
+                
+            all_predictions.extend(predictions)
+            all_targets.extend(targets.cpu().numpy())
+
         avg_loss = running_loss / len(self.train_loader)
         self.train_losses.append(avg_loss)
+
+        accuracy = accuracy_score(all_targets, all_predictions)
+        self.train_acc.append(accuracy)
+
+        f1 = f1_score(all_targets, all_predictions, average="weighted")
+        self.train_f1.append(f1)
+
         return avg_loss
-
-    def calculate_mnlp(self, outputs, targets):
-        """
-        Calculate Maximum Normalized Log-Probability (MNLP).
-        :param outputs: Model outputs (logits)
-        :param targets: True labels
-        :return: MNLP value
-        """
-        # Convert logits to probabilities using softmax
-        probabilities = F.softmax(outputs, dim=1)
-
-        # Get the log-probabilities
-        log_probabilities = torch.log(probabilities)
-
-        # Gather log-probabilities of the true classes
-        true_log_probs = log_probabilities[range(len(targets)), targets]
-
-        # Normalize by dividing by log(1/num_classes)
-        num_classes = probabilities.size(1)
-        normalized_log_probs = true_log_probs / torch.log(torch.tensor(1.0 / num_classes))
-
-        # Return the maximum normalized log-probability
-        return normalized_log_probs.mean().item()
 
     def val_step(self):
         """
@@ -92,7 +93,6 @@ class Trainer:
         running_loss = 0.0
         all_targets = []
         all_predictions = []
-        mnlp_values = []
 
         with torch.no_grad():
             for inputs, targets in tqdm(self.val_loader, desc="Validating"):
@@ -106,26 +106,63 @@ class Trainer:
 
                 # Сохранение предсказаний и истинных меток
                 predictions = outputs.argmax(dim=1).cpu().numpy()
+
                 all_predictions.extend(predictions)
                 all_targets.extend(targets.cpu().numpy())
 
-                # Сохранение MNLP
-                mnlp = self.calculate_mnlp(outputs, targets)
-                mnlp_values.append(mnlp)
-
         # Рассчитываем метрики
         avg_loss = running_loss / len(self.val_loader)
-        accuracy = accuracy_score(all_targets, all_predictions)
-        f1 = f1_score(all_targets, all_predictions, average="weighted")
-        self.acc.append(accuracy)
-        self.f1.append(f1)
-
-        avg_mnlp = sum(mnlp_values) / len(mnlp_values) if mnlp_values else 0
-
         self.val_losses.append(avg_loss)
 
-        print(f"Validation Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}, MNLP: {avg_mnlp:.4f}")
-        return avg_loss, accuracy, f1, avg_mnlp
+        accuracy = accuracy_score(all_targets, all_predictions)
+        self.val_acc.append(accuracy)
+
+        f1 = f1_score(all_targets, all_predictions, average="weighted")
+        self.val_f1.append(f1)
+
+        print(f"Validation Loss: {avg_loss:.4f}, Accuracy: {accuracy:.4f}, F1 Score: {f1:.4f}")
+        return avg_loss, accuracy, f1
+    
+    def select_samples(self):
+        """
+        Выбираем сэмплы на активное обучение
+
+        """
+
+        pass
+
+    def update_dataloader(self, samples_index):
+        """
+        Обновляем даталоудеры
+        """
+
+        samples = [self.pool_loader.dataset[i] for i in samples_index]
+
+
+        new_train_data = ConcatDataset([self.train_loader.dataset, samples])
+        
+        self.train_loader = DataLoader(new_train_data,
+                                       batch_size=self.train_loader.batch_size,
+                                       shuffle=True,
+                                       num_workers=self.train_loader.num_workers)
+        
+        pool_indices = list(set(range(len(self.pool_loader.dataset))) - set(samples_index))
+
+
+        print(len(self.pool_loader.dataset))
+
+        new_pool_data = Subset(self.pool_loader.dataset, pool_indices)
+
+        print(len(new_pool_data))
+
+
+        self.pool_loader = DataLoader(new_pool_data,
+                                      batch_size=self.pool_loader.batch_size,
+                                      shuffle=True,
+                                      num_workers=self.pool_loader.num_workers)
+
+
+
     
     def fit(self, num_epochs):
         """
@@ -134,10 +171,14 @@ class Trainer:
         """
         for epoch in range(num_epochs):
             train_loss = self.train_step()
-            val_loss, accuracy, f1, avg_mnlp = self.val_step()
-            print(f"Epoch {epoch+1}/{num_epochs} - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Acc: {accuracy:.4f}, F1: {f1:.4f}, MNLP: {avg_mnlp:.4f}")
+            val_loss, accuracy, f1 = self.val_step()
 
-        self.plot_losses()
+            if self.scheduler is not None:
+                if isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                    self.scheduler.step(val_loss)
+                else:
+                    self.scheduler.step()
+            print(f"Epoch {epoch+1}/{num_epochs} - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Acc: {accuracy:.4f}, F1: {f1:.4f}")
 
     def plot_losses(self):
         """
@@ -149,5 +190,31 @@ class Trainer:
         plt.xlabel("Epoch")
         plt.ylabel("Loss")
         plt.title("Loss Curves")
+        plt.legend()
+        plt.show()
+
+    def plot_acc(self):
+        """
+        Построение графиков точности.
+        """
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.train_acc, label="Train Accuracy")
+        plt.plot(self.val_acc, label="Validation Accuracy")
+        plt.xlabel("Epoch")
+        plt.ylabel("Acc")
+        plt.title("Acc Curves")
+        plt.legend()
+        plt.show()
+
+    def plot_f1(self):
+        """
+        Построение графиков f1.
+        """
+        plt.figure(figsize=(10, 5))
+        plt.plot(self.train_f1, label="Train F1")
+        plt.plot(self.val_f1, label="Validation F1")
+        plt.xlabel("Epoch")
+        plt.ylabel("F1")
+        plt.title("F1 Curves")
         plt.legend()
         plt.show()
