@@ -135,7 +135,7 @@ class Trainer:
         """
         Обновляем даталоудеры
         """
-
+        print(samples_index)
         samples = [self.pool_loader.dataset[i] for i in samples_index]
 
 
@@ -150,7 +150,8 @@ class Trainer:
 
 
         print(len(self.pool_loader.dataset))
-
+        print(self.pool_loader.dataset.__len__())
+        print(len(pool_indices))
         new_pool_data = Subset(self.pool_loader.dataset, pool_indices)
 
         print(len(new_pool_data))
