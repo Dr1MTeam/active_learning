@@ -17,28 +17,31 @@ class MNLPTrainer(Trainer):
 
         with torch.no_grad():
             for batch in self.pool_loader:
-                inputs, indices = batch  # Assume loader returns data and their indices
+                inputs, labels = batch  # Assume loader returns data and their indices
                 inputs = inputs.to(self.device)
 
                 log_probs = torch.log_softmax(self.model(inputs), dim=-1) 
-
+                
+                print(len(log_probs))
                 # Для каждого примера суммируем логарифмы вероятностей по длине последовательности
                 sequence_log_probs = log_probs.sum(dim=-1) 
-
+                
                 # Усредняем значения логарифмов вероятностей по длине последовательности
-                mean_log_probs = sequence_log_probs.mean(axis=0) 
-
+                mean_log_probs = sequence_log_probs.mean(axis=-1) 
+                print(mean_log_probs)
                 # Нормализуем логарифмы вероятностей по длине последовательности
-                normalized_log_probs = mean_log_probs / inputs.shape[1]  
+                normalized_log_probs = mean_log_probs / config['batch_size']
 
+                print(len(normalized_log_probs))
             
                 all_scores.append(normalized_log_probs.cpu())
                 all_indices.append(indices)
     
-
-        all_scores = torch.stack(all_scores) 
+        #print(len(all_scores))
+        all_scores = torch.stack(all_scores)
         all_indices = torch.cat(all_indices) 
-
+        print(len(all_indices))
+        print(len(all_scores))
     
         _, top_indices = torch.topk(-all_scores, config['num_samples'])  
         informative_indices = all_indices[top_indices].tolist()
@@ -54,8 +57,10 @@ class MNLPTrainer(Trainer):
         """
         for epoch in range(num_epochs):
             train_loss = self.train_step()
-            self.select_samples()
+
             val_loss, accuracy, f1  = self.val_step()
+            self.select_samples()
+
             print(f"Epoch {epoch+1}/{num_epochs} - Train Loss: {train_loss:.4f}, Val Loss: {val_loss:.4f}, Acc: {accuracy:.4f}, F1: {f1:.4f}")
 
     

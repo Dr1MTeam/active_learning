@@ -8,8 +8,11 @@ from tqdm import tqdm
 sys.path.append(os.path.abspath('..'))
 from base_trainer import Trainer
 
+from omegaconf import OmegaConf
+config = OmegaConf.load('config.yaml')
+num_samples = config['num_samples']
 
-BATCH_ADD_SIZE = 256
+BATCH_ADD_SIZE = num_samples
 
 class EGLTrainer(Trainer):
     def select_samples(self, num_samples):
