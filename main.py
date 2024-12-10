@@ -96,4 +96,6 @@ print('DEVICE: ', DEVICE)
 
 trainer.fit(NUM_EPOCH)
 trainer.plot_losses()
+trainer.plot_acc()
+trainer.plot_f1()
 

@@ -157,7 +157,7 @@ class Trainer:
 
         self.pool_loader = DataLoader(new_pool_data,
                                       batch_size=self.pool_loader.batch_size,
-                                      shuffle=True,
+                                      shuffle=False,
                                       num_workers=self.pool_loader.num_workers)
 
 
