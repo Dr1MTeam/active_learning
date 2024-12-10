@@ -34,9 +34,14 @@ class BALDTrainer(Trainer):
         all_indices = []  # Список для хранения индексов примеров
 
         with torch.no_grad():
-            for batch in tqdm(self.pool_loader, desc="BALD"):
-                inputs, indices = batch  # Предполагается, что loader возвращает данные и их индексы
+            for i, batch in enumerate(tqdm(self.pool_loader, desc='BALD')):
+                inputs, _ = batch  # Предполагается, что loader возвращает данные и их индексы
                 inputs = inputs.to(self.device)
+
+                batch_size = inputs.size(0)
+                # Глобальные индексы батча
+                batch_indices = torch.arange(i * batch_size, (i + 1) * batch_size)
+                all_indices.append(batch_indices)
 
                 # Monte Carlo Dropout: несколько проходов через модель
                 mc_outputs = torch.stack([
@@ -59,7 +64,6 @@ class BALDTrainer(Trainer):
 
                 # Сохраняем результаты
                 all_entropies.append(bald_scores.cpu())
-                all_indices.append(indices)
 
         # Объединяем результаты для всех батчей
         all_entropies = torch.cat(all_entropies)  # Все BALD оценки
