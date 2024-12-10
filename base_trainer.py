@@ -24,10 +24,7 @@ class Trainer:
         self.device = device
         
         self.train_loader = train_loader
-<<<<<<< HEAD
-=======
         self.pool_loader = pool_loader
->>>>>>> 720dc87e63148789c08a2efb79d6b792a754b5e5
         self.val_loader = val_loader
 
         self.train_losses = []
@@ -138,7 +135,7 @@ class Trainer:
         """
         Обновляем даталоудеры
         """
-
+        print(samples_index)
         samples = [self.pool_loader.dataset[i] for i in samples_index]
 
 
@@ -153,7 +150,8 @@ class Trainer:
 
 
         print(len(self.pool_loader.dataset))
-
+        print(self.pool_loader.dataset.__len__())
+        print(len(pool_indices))
         new_pool_data = Subset(self.pool_loader.dataset, pool_indices)
 
         print(len(new_pool_data))
