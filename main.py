@@ -6,8 +6,15 @@ from torchvision import datasets, transforms, models
 import numpy as np
 from matplotlib import pyplot as plt
 from model import SimpleCNN
+
 from base_trainer import Trainer
+
 from ContrAL.ContrAL import contrastive_AL
+from least_confidence.least_confidence import LeastConf
+from BALD.BALD import BALDTrainer
+from EGL.EGL import EGLTrainer
+from MNLP.MNLP import MNLPTrainer
+
 from omegaconf import OmegaConf  # Import OmegaConf
 
 # Load configuration from YAML file
@@ -38,29 +45,38 @@ if config['split_label_unlabel']:
 
     train_dataloader = DataLoader(initial_data, batch_size=config['batch_size'], shuffle=True)
     val_dataloader = DataLoader(test_dataset, batch_size=config['batch_size'], shuffle=True)
-    pool_dataloader = DataLoader(unlabeled_data, batch_size=config['batch_size'], shuffle=True)
+    pool_dataloader = DataLoader(unlabeled_data, batch_size=config['batch_size'], shuffle=False)
     #print(f" Размер исходного датасета {len(train_dataset)}")
     
     print(f" Размер обучающего датасета {len(initial_data)}")
     print(f" Размер AL датасета {len(unlabeled_data)}")
     print(f" Размер тестового датасета {len(test_dataset)}")
 
-
 match config['AL_Method']:
     case 'wo_AL':
 
         train_dataloader = DataLoader(train_dataset, batch_size=config['batch_size'], shuffle=True)
-        val_dataloader = DataLoader(test_dataset, batch_size=config['batch_size'], shuffle=True)
+        val_dataloader = DataLoader(test_dataset, batch_size=config['batch_size'], shuffle=False)
         pool_dataloader = None
         
 
     case 'ContrAL':
         Trainer = contrastive_AL
 
+    case 'BALD':
+        Trainer = BALDTrainer
+    
+    case 'MNLP':
+        Trainer = MNLPTrainer
+    
+    case 'EGL':
+        Trainer = EGLTrainer
+    case "LC":
+        Trainer = LeastConf
+
+
 
 print(f" Используем метод { config['AL_Method'] }")
-
-
 
 
 trainer = Trainer(model=model.to(DEVICE),
@@ -80,3 +96,4 @@ print('DEVICE: ', DEVICE)
 
 trainer.fit(NUM_EPOCH)
 trainer.plot_losses()
+
