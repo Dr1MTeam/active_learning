@@ -6,7 +6,8 @@ sys.path.append(os.path.abspath('..'))
 from base_trainer import Trainer
 import torch.nn.functional as F
 
-
+from omegaconf import OmegaConf
+config = OmegaConf.load('config.yaml')
 
 class MNLPTrainer(Trainer):
     def select_samples(self):
@@ -19,31 +20,29 @@ class MNLPTrainer(Trainer):
                 inputs, indices = batch  # Assume loader returns data and their indices
                 inputs = inputs.to(self.device)
 
-                log_probs = torch.log_softmax(self.model(inputs), dim=-1)  # (batch_size, seq_len, num_classes)
+                log_probs = torch.log_softmax(self.model(inputs), dim=-1) 
 
                 # Для каждого примера суммируем логарифмы вероятностей по длине последовательности
-                sequence_log_probs = log_probs.sum(dim=-1)  # (batch_size, seq_len)
+                sequence_log_probs = log_probs.sum(dim=-1) 
 
                 # Усредняем значения логарифмов вероятностей по длине последовательности
-                mean_log_probs = sequence_log_probs.mean(axis=0)  # (batch_size)
+                mean_log_probs = sequence_log_probs.mean(axis=0) 
 
                 # Нормализуем логарифмы вероятностей по длине последовательности
-                normalized_log_probs = mean_log_probs / inputs.shape[1]  # (batch_size)
+                normalized_log_probs = mean_log_probs / inputs.shape[1]  
 
-                # Save results
+            
                 all_scores.append(normalized_log_probs.cpu())
                 all_indices.append(indices)
     
 
-        # Combine results across all batches
-        all_scores = torch.stack(all_scores) # All MNLP scores
-        all_indices = torch.cat(all_indices)  # All indices
+        all_scores = torch.stack(all_scores) 
+        all_indices = torch.cat(all_indices) 
 
-        # Select top-K indices with the lowest MNLP scores (most uncertain samples)
-        _, top_indices = torch.topk(-all_scores, 10)  # Negative for ascending sort
+    
+        _, top_indices = torch.topk(-all_scores, config['num_samples'])  
         informative_indices = all_indices[top_indices].tolist()
 
-        # Update dataloaders for the next iteration
         self.update_dataloader(informative_indices)
 
         return informative_indices
