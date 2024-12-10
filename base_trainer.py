@@ -147,7 +147,6 @@ class Trainer:
                                        num_workers=self.train_loader.num_workers)
         
 
-
         all_indexes = list(range(len(self.pool_loader.dataset)))
         
         #print(samples_index)
@@ -155,8 +154,6 @@ class Trainer:
 
 
         new_pool_data = Subset(self.pool_loader.dataset, filtered_indexes)
-
-        #print(len(new_pool_data))
 
         self.pool_loader = DataLoader(new_pool_data,
                                       batch_size=self.pool_loader.batch_size,
