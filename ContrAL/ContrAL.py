@@ -1,49 +1,57 @@
-from sklearn.metrics.pairwise import cosine_similarity
 import sys
 import torch
 import os
 import numpy as np
-
+from omegaconf import OmegaConf
 sys.path.append(os.path.abspath('..'))
 
+from sklearn.neighbors import NearestNeighbors
+from torch.nn.functional import softmax
+
 from base_trainer import Trainer
-
+config = OmegaConf.load('config.yaml')
 class contrastive_AL(Trainer):
-    def select_samples(self):
+
+    def compute_encodings_and_probs(self, dataloader):
+
         self.model.eval()
-        embeddings = []
-        labels_list = []
-        top_k=5
-        # Проход по данным батчами для получения эмбеддингов
+        encodings, probabilities = [], []
         with torch.no_grad():
-            for inputs, batch_labels in self.pool_loader:
-                inputs = inputs.to(self.device)
-                batch_embeddings = self.model(inputs).cpu().numpy()  # Вычисляем эмбеддинги
-                embeddings.append(batch_embeddings)
-                labels_list.append(batch_labels.numpy())
+            for batch in dataloader:
+                inputs = batch[0].to(self.device)  
+                outputs = self.model(inputs) # получили эмбеддинги
+                probs = softmax(outputs, dim=-1).cpu().numpy()  # получили вероятности
+                #print(probs)
+                encodings.append(outputs.cpu().numpy())
+                probabilities.append(probs)
+        #print(encodings)
+        return np.vstack(encodings), np.vstack(probabilities)
 
-        # Объединяем все эмбеддинги и метки
-        embeddings = np.vstack(embeddings)
-        labels_array = np.hstack(labels_list)
+    def select_samples(self):
+        num_samples = config['batch_size']
+        k = config['batch_size']
+        labeled_encodings, labeled_probs = self.compute_encodings_and_probs(self.train_loader)
+        unlabeled_encodings, unlabeled_probs = self.compute_encodings_and_probs(self.pool_loader)
 
-        # Выбор контрастных примеров
-        contrastive_pairs = []
-        for i in range(len(embeddings)):
-            similarities = cosine_similarity([embeddings[i]], embeddings)
-            sorted_indices = np.argsort(-similarities[0])
+        knn = NearestNeighbors(n_neighbors=k).fit(labeled_encodings)
+        neighbors_idx = knn.kneighbors(unlabeled_encodings, return_distance=False)
+        print(len(neighbors_idx))
+        # Compute contrastive scores
+        cal_scores = []
+        for i, neighbors in enumerate(neighbors_idx):
+            # Calculate KL divergence between unlabeled sample and its neighbors
+            neighbor_probs = labeled_probs[neighbors]
+            kl_scores = [
+                np.sum(prob * np.log(prob / unlabeled_probs[i]))
+                for prob in neighbor_probs
+            ]
+            # Average KL divergence over neighbors
+            cal_scores.append(np.mean(kl_scores))
 
-            # Выбираем примеры с разными метками
-            for j in sorted_indices:
-                if labels_array[j] != labels_array[i]:
-                    contrastive_pairs.append((i, j))
-                    if len(contrastive_pairs) >= top_k:
-                        break
-            if len(contrastive_pairs) >= top_k:
-                break
+        # Select the indices of the top-k samples with the highest CAL scores
+        top_indices = np.argsort(cal_scores)[-num_samples:]
 
-        cont_p = [item for tup in contrastive_pairs for item in tup]
-
-        self.update_dataloader(cont_p)
+        self.update_dataloader(top_indices)
 
     
 

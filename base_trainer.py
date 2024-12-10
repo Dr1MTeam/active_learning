@@ -146,15 +146,17 @@ class Trainer:
                                        shuffle=True,
                                        num_workers=self.train_loader.num_workers)
         
-        pool_indices = list(set(range(len(self.pool_loader.dataset))) - set(samples_index))
+
+        all_indexes = list(range(len(self.pool_loader.dataset)))
+        
+        #print(samples_index)
 
 
-        print(len(self.pool_loader.dataset))
+        filtered_indexes = [idx for idx in all_indexes if idx not in samples_index]
 
-        new_pool_data = Subset(self.pool_loader.dataset, pool_indices)
+        new_pool_data = Subset(self.pool_loader.dataset, filtered_indexes)
 
-        print(len(new_pool_data))
-
+        #print(len(new_pool_data))
 
         self.pool_loader = DataLoader(new_pool_data,
                                       batch_size=self.pool_loader.batch_size,

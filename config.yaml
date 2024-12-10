@@ -1,0 +1,13 @@
+NUM_EPOCH : 350
+NUM_CLASSES: 10
+
+learning_rate: 5e-4
+batch_size: 128
+
+split_label_unlabel: 0.1
+
+AL_Method: ContrAL #"wo_AL"   #
+
+num_samples: 500
+# В случае ContrAL - количество выбираемых пар каждый шаг АЛ
+# В случае EGL, BALD - количество семплов, выбираемых каждый шаг АЛ
