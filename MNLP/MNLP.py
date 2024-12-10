@@ -1,6 +1,7 @@
 import os
 import sys 
 import torch
+import numpy as np
 
 sys.path.append(os.path.abspath('..'))
 from base_trainer import Trainer
@@ -14,6 +15,7 @@ class MNLPTrainer(Trainer):
         self.model.eval()  # Set the model to evaluation mode
         all_scores = []  # List to store MNLP scores for each sample
         all_indices = []  # List to store indices of the samples
+        current_index = 0  # Начальный индекс
 
         with torch.no_grad():
             for batch in self.pool_loader:
@@ -21,24 +23,23 @@ class MNLPTrainer(Trainer):
                 inputs = inputs.to(self.device)
 
                 log_probs = torch.log_softmax(self.model(inputs), dim=-1) 
-                
-                print(len(log_probs))
+                #print(log_probs)
                 # Для каждого примера суммируем логарифмы вероятностей по длине последовательности
-                sequence_log_probs = log_probs.sum(dim=-1) 
-                
-                # Усредняем значения логарифмов вероятностей по длине последовательности
-                mean_log_probs = sequence_log_probs.mean(axis=-1) 
-                print(mean_log_probs)
+                sequence_log_probs = (log_probs).sum(dim=1)
                 # Нормализуем логарифмы вероятностей по длине последовательности
-                normalized_log_probs = mean_log_probs / config['batch_size']
+                normalized_log_probs = sequence_log_probs / config['batch_size']
 
-                print(len(normalized_log_probs))
-            
+                
+                # Добавляем индексы текущего батча
+                batch_size = inputs.size(0)
+                batch_indices = torch.arange(current_index, current_index + batch_size)
+
+
                 all_scores.append(normalized_log_probs.cpu())
-                all_indices.append(indices)
+                all_indices.append(batch_indices)
     
         #print(len(all_scores))
-        all_scores = torch.stack(all_scores)
+        all_scores = torch.cat(all_scores)
         all_indices = torch.cat(all_indices) 
         print(len(all_indices))
         print(len(all_scores))
