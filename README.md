@@ -22,6 +22,6 @@ CIFAR-10
 | No AL | ![img1](res/base_f1.png) |   |   |
 | EGL | ![img1](res/egl_f1_0.01.png) | ![img2](res/egl_f1_0.1.png) | ![img3](res/egl_f1_0.2.png) |
 | BALD | ![img1](res/bald_f1_0.01.png) | ![img2](res/bald_f1_0.1.png) | ![img3](res/bald_f1_0.2.png) |
-| Contr |   | ![img2](res/contr_f1_0.1.png) |   |
-| LC |   |   |   |
-| MNLP |  |   |   |
+| Contr |  ![img2](res/contr_f1_0.01.png) | ![img2](res/contr_f1_0.1.png) |  ![img2](res/contr_f1_0.2.png) |
+| LC |  ![img2](res/lc_f1_0.01.png) |  ![img2](res/lc_f1_0.1.png)  |  ![img2](res/lc_f1_0.2.png) |
+| MNLP | ![img2](res/mnlp_f1_0.01.png) | ![img2](res/mnlp_f1_0.1.png)  | ![img2](res/mnlp_f1_0.2.png)  |

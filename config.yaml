@@ -4,8 +4,8 @@ NUM_CLASSES: 10
 learning_rate: 5e-4
 batch_size: 128
 
-split_label_unlabel: 0.1
+split_label_unlabel: 0.01
 
-AL_Method: EGL #MNLP #ContrAL #wo_AL #EGL  #LC #MNLP #BALD 
+AL_Method: ContrAL #MNLP #ContrAL #wo_AL #EGL  #LC #MNLP #BALD 
 
 num_samples: 500 #количество семплов, выбираемых каждый шаг АЛ
