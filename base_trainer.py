@@ -135,7 +135,7 @@ class Trainer:
         """
         Обновляем даталоудеры
         """
-        print(samples_index)
+
         samples = [self.pool_loader.dataset[i] for i in samples_index]
 
 
@@ -146,6 +146,7 @@ class Trainer:
                                        shuffle=True,
                                        num_workers=self.train_loader.num_workers)
         
+
 
         all_indexes = list(range(len(self.pool_loader.dataset)))
         
