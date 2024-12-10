@@ -135,7 +135,7 @@ class Trainer:
         """
         Обновляем даталоудеры
         """
-
+        print(samples_index)
         samples = [self.pool_loader.dataset[i] for i in samples_index]
 
 
@@ -150,9 +150,8 @@ class Trainer:
         all_indexes = list(range(len(self.pool_loader.dataset)))
         
         #print(samples_index)
-
-
         filtered_indexes = [idx for idx in all_indexes if idx not in samples_index]
+
 
         new_pool_data = Subset(self.pool_loader.dataset, filtered_indexes)
 
