@@ -17,9 +17,9 @@ CIFAR-10
 
 ## Результаты
 
-| Алгоритм  | Картинка 1                | Картинка 2                | Картинка 3                |
+| Алгоритм  | F1 при 0.01                | F1 при 0.1                | F1 при 0.2                |
 |-----------|---------------------------|---------------------------|---------------------------|
-| No AL | ![img1](res/base_f1.png) |   |   |
+| No AL | ![img1](res/no_al_0.01.png) | ![img1](res/no_al_0.1.png)  | ![img1](res/no_al_0.2.png)  |
 | EGL | ![img1](res/egl_f1_0.01.png) | ![img2](res/egl_f1_0.1.png) | ![img3](res/egl_f1_0.2.png) |
 | BALD | ![img1](res/bald_f1_0.01.png) | ![img2](res/bald_f1_0.1.png) | ![img3](res/bald_f1_0.2.png) |
 | Contr |  ![img2](res/contr_f1_0.01.png) | ![img2](res/contr_f1_0.1.png) |  ![img2](res/contr_f1_0.2.png) |
