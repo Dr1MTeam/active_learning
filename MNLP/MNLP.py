@@ -78,8 +78,7 @@ class MNLPTrainer(Trainer):
 
     def _fit(self, num_epochs):
         """
-        Полный цикл обучения.
-        :param num_epochs: Количество эпох
+        Обучение на части данных
         """
         for epoch in range(num_epochs):
             train_loss = self.train_step()

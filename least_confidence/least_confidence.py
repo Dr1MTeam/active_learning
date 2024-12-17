@@ -33,16 +33,14 @@ class LeastConf(Trainer):
         confidence_scores = torch.cat(all_confidences)
         
         # Находим индексы образцов с наименьшей уверенностью
-        least_confident_indices = torch.argsort(1 - confidence_scores)[:num_samples_to_select]
+        least_confident_indices = torch.argsort(confidence_scores)[:num_samples_to_select]
         self.update_dataloader(least_confident_indices.cpu().numpy())
         #print("watch = ", least_confident_indices.cpu().numpy())
         return least_confident_indices.cpu().numpy()
     
     def fit(self, end_data_amaunt = 10000, num_samples = BATCH_ADD_SIZE, epochs_for_batch = 5):
-
         """
-        Полный цикл обучения.
-        :param num_epochs: Количество эпох
+        Обучение на части данных
         """
         num_epochs = epochs_for_batch  *end_data_amaunt // num_samples
         epoch = 1
