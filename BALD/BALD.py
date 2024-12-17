@@ -8,7 +8,7 @@ from base_trainer import Trainer
 
 from tqdm import tqdm
 
-BATCH_ADD_SIZE = 256
+BATCH_ADD_SIZE = 500
 
 
 class BALDTrainer(Trainer):
@@ -78,33 +78,33 @@ class BALDTrainer(Trainer):
 
         return informative_indices
     
-    def update_dataloader(self, samples_index):
+    def fit(self, end_data_amaunt = 10000, num_samples = BATCH_ADD_SIZE, epochs_for_batch = 5):
+
         """
-        Обновляем даталоудеры
+        Полный цикл обучения.
+        :param num_epochs: Количество эпох
         """
-        samples = [self.pool_loader.dataset[i] for i in samples_index]
+        num_epochs = epochs_for_batch  *end_data_amaunt // num_samples
+        epoch = 1
+        while (len(self.train_loader.dataset) <= end_data_amaunt):
+            train_loss = self.train_step()
+            
+            if self.scheduler is not None:
+                if isinstance(self.scheduler, torch.optim.lr_scheduler.ReduceLROnPlateau):
+                    self.scheduler.step(train_loss)
+                else:
+                    self.scheduler.step()
+            print(f"Epoch {epoch}/{num_epochs} - Train data: {len(self.train_loader.dataset)}")
+            print(f"Train Loss: {train_loss:.4f}")
+            # print(f"Val Loss: {val_loss:.4f}, Acc: {accuracy:.4f}, F1: {f1:.4f}")
+            if epoch % epochs_for_batch == 0:
+                self.select_samples(num_samples)
+                # self.optimizer = torch.optim.Adam(self.model.parameters(), lr=5e-4)
+            
+            epoch+=1
+        return self.val_step()
 
-
-        new_train_data = ConcatDataset([self.train_loader.dataset, samples])
-        
-        self.train_loader = DataLoader(new_train_data,
-                                       batch_size=self.train_loader.batch_size,
-                                       shuffle=True,
-                                       num_workers=self.train_loader.num_workers)
-        
-
-        all_indexes = list(range(len(self.pool_loader.dataset)))
-        
-        filtered_indexes = [idx for idx in all_indexes if idx not in samples_index]
-
-        new_pool_data = Subset(self.pool_loader.dataset, filtered_indexes)
-
-        self.pool_loader = DataLoader(new_pool_data,
-                                      batch_size=self.pool_loader.batch_size,
-                                      shuffle=True,
-                                      num_workers=self.pool_loader.num_workers)
-    
-    def fit(self, num_epochs, num_samples = BATCH_ADD_SIZE):
+    def _fit(self, num_epochs, num_samples = BATCH_ADD_SIZE):
 
         """
         Полный цикл обучения.

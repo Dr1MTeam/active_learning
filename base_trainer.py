@@ -2,9 +2,20 @@ from tqdm import tqdm
 from sklearn.metrics import f1_score, accuracy_score
 
 from matplotlib import pyplot as plt
-from torch.utils.data import ConcatDataset, Subset, DataLoader
+from torch.utils.data import ConcatDataset, Subset, DataLoader, Dataset
 import torch
 from torch.nn.utils.rnn import pad_sequence
+
+class NewDataset(Dataset):
+    def __init__(self, old_dataset, indexes):
+        # Копируем данные на основе указанных индексов
+        self.data = [old_dataset[idx] for idx in indexes]
+    
+    def __len__(self):
+        return len(self.data)
+    
+    def __getitem__(self, idx):
+        return self.data[idx]
 
 class Trainer:
     def __init__(self, model, optimizer,pool_loader, criterion, train_loader, val_loader,  device, scheduler = None):
@@ -135,6 +146,7 @@ class Trainer:
         """
         Обновляем даталоудеры
         """
+        print(self.pool_loader.dataset.__len__())
 
         samples = [self.pool_loader.dataset[i] for i in samples_index]
 
@@ -153,7 +165,7 @@ class Trainer:
         filtered_indexes = [idx for idx in all_indexes if idx not in samples_index]
 
 
-        new_pool_data = Subset(self.pool_loader.dataset, filtered_indexes)
+        new_pool_data = NewDataset(self.pool_loader.dataset, filtered_indexes)
 
         self.pool_loader = DataLoader(new_pool_data,
                                       batch_size=self.pool_loader.batch_size,
